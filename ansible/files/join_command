@@ -1,0 +1,1 @@
+kubeadm join 84.201.130.59:6443 --token olrlta.tbydhlj2favvqco2 --discovery-token-ca-cert-hash sha256:fa2a5833f842c55370118d2145f9256df67d76eb5b808082a9258d725a1cd9dd 

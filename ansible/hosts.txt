@@ -1,0 +1,6 @@
+[kubeMaster]
+kube-master ansible_host=84.201.130.59 ansible_user=ubuntu
+
+[kubeWorkers]
+kube-worker-1 ansible_host=84.201.132.106 ansible_user=ubuntu
+kube-worker-2 ansible_host=89.169.131.55 ansible_user=ubuntu

@@ -1,0 +1,87 @@
+---
+- name: preinstallation
+  hosts: all
+  become: yes
+
+  tasks:
+  - name: install packages
+    apt: 
+      name: 
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      update_cache: yes
+  
+  - name: getting kubernetes kayring
+    shell: "curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg --batch --yes"
+  
+  - name: adding kubernetes source list
+    shell: "echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list"
+
+  - name: getting docker keyrings
+    shell: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg --batch --yes"
+
+  - name: changing resolution for docker keyrings
+    shell: "chmod a+r /etc/apt/keyrings/docker.gpg"
+  
+  - name: adding docker source list
+    shell: 'echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" |   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null'
+
+  - name: copy kubernetes.conf
+    copy:
+      src: files/kubernetes.conf
+      dest: /etc/sysctl.d/kubernetes.conf
+
+  - name: copy containerd.conf
+    copy:
+      src: files/containerd.conf
+      dest: /etc/modules-load.d/containerd.conf
+
+  - name: copy 99-kubernetes-cri.conf
+    copy:
+      src: files/99-kubernetes-cri.conf
+      dest: /etc/sysctl.d/99-kubernetes-cri.conf
+
+  - name: enabling overlay
+    modprobe:
+      name: overlay
+      state: present
+
+  - name: enabling br_netfilter
+    modprobe:
+      name: br_netfilter
+      state: present
+
+  - name: loading new configuration
+    shell: sysctl --system
+
+  - name: installing containerd.io
+    apt:
+      name: containerd.io
+      update_cache: yes
+
+  - name: copy containerd config file
+    copy:
+      src: files/config.toml
+      dest: /etc/containerd/config.toml
+
+  - name: restarting and enabling containerd service
+    service:
+      name: containerd
+      state: restarted
+      enabled: yes
+
+  - name: installing kubernetes packages
+    apt:
+      name:
+      - kubelet
+      - kubeadm
+      - kubectl
+      update_cache: yes
+
+  - name: mark kubernetes packeges to hold
+    shell: "apt-mark hold kubelet kubeadm kubectl"
+
+  - name: install gitlab-runner
+    shell: "curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | sudo bash; sudo apt-get install gitlab-runner"

@@ -1,0 +1,63 @@
+---
+- name: kuberentes initialisation
+  hosts: kubeMaster
+  become: yes
+
+  tasks:
+  - name: initialising kubernetes cluster
+    shell: "kubeadm init --pod-network-cidr=10.244.0.0/16 --control-plane-endpoint={{ ansible_host }} --apiserver-cert-extra-sans={{ ansible_host }}"
+
+  - name: creating .kube directory
+    file:
+      path: "{{ ansible_user_dir }}/.kube"
+      state: directory
+    
+  - name: copying kubernetes config file
+    copy:
+      remote_src: true
+      src: /etc/kubernetes/admin.conf
+      dest: "{{ ansible_user_dir }}/.kube/config"
+
+  - name: change permissions to kubernetes config file
+    file:
+      path: "{{ ansible_user_dir }}/.kube/config"
+      owner: "{{ ansible_user_id }}"
+      group: "{{ ansible_user_gid }}"
+
+  - name: copying kubernetes config file to local machine
+    fetch:
+      src: "{{ ansible_user_dir }}/.kube/config"
+      dest: ~/.kube/config
+      flat: yes
+
+  - name: copying flannel kubernetes manifest file
+    copy:
+      src: files/kube-flannel.yml
+      dest: /kube-flannel.yml
+  
+  - name: initialising kubernetes network
+    shell: kubectl apply -f /kube-flannel.yml
+
+  - name: getting join command from master
+    shell: "kubeadm token create --print-join-command >> /join_command"
+  
+  - name: copying join command to local host
+    fetch:
+      src: /join_command
+      dest: files/join_command
+      flat: yes
+
+
+
+- name: kuberentes workers join
+  hosts: kubeWorkers
+  become: yes
+
+  tasks:
+  - name: copy join command to worker nodes
+    copy:
+      src: files/join_command
+      dest: /join_command
+
+  - name: executing join command
+    shell: "/bin/bash /join_command"

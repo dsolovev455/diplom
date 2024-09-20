@@ -1,0 +1,19 @@
+---
+- name: kuberentes monitoring initialisation
+  hosts: kubeMaster
+  become: yes
+
+  tasks:
+    - name: copying kubernetes manifest files
+      copy:
+        src: files/monitoring/manifests
+        dest: /monitoring
+
+    - name: applying core kubernetes manifest files
+      shell: "kubectl apply --server-side -f /monitoring/manifests/setup/"
+
+    - name: waiting for all resources to be created
+      shell: "kubectl wait --for condition=Established --all CustomResourceDefinition --namespace=monitoring"
+
+    - name: applying kuberentes manifest files for monitoring
+      shell: "kubectl apply -f /monitoring/manifests/"
